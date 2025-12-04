@@ -1,0 +1,16 @@
+.hover-link {
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.hover-link:hover {
+  color: #198754 !important; /* Bootstrap success green */
+  transform: translateY(-1px);
+}
+
+.navbar-light .navbar-brand span {
+  letter-spacing: 0.5px;
+}
+
+.navbar-light .nav-link {
+  font-size: 0.95rem;
+}

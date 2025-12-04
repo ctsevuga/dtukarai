@@ -1,0 +1,30 @@
+.home-container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f9f9f9, #e0eafc);
+}
+
+.option-card {
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.option-card:hover {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.icon-wrapper {
+  font-size: 2rem;
+}
+
+@media (max-width: 768px) {
+  .option-card {
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .icon-wrapper {
+    font-size: 1.5rem;
+  }
+}
