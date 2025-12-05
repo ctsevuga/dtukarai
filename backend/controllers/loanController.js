@@ -19,12 +19,11 @@ const updateLoanStatus = async (loan) => {
 const createLoan = async (req, res) => {
   try {
     const {
-      newBorrower,     // TRUE or FALSE
-      borrower,         // If newBorrower = true → borrower = { name, phone }
-                        // If newBorrower = false → borrower = borrowerId
+      newBorrower,        // Boolean
+      borrower,           // borrowerId OR { name, phone }
       assignedAgent,
       principalAmount,
-      interestRate,
+      amountPaidToBorrower,
       installmentCount,
       startDate
     } = req.body;
@@ -32,33 +31,32 @@ const createLoan = async (req, res) => {
     let borrowerId;
 
     // ----------------------------------------------------------
-    // 1️⃣ If newBorrower = true → create borrower first
+    // 1️⃣ If creating a NEW borrower
     // ----------------------------------------------------------
     if (newBorrower) {
-      // Validate required fields for new borrower
       if (!borrower?.name || !borrower?.phone) {
         return res.status(400).json({
-          message: "Borrower name and phone are required for new borrower"
+          message: "Borrower name and phone are required for new borrower",
         });
       }
 
-      // Check if phone already exists
+      // Check phone duplication
       const phoneExists = await Borrower.findOne({ phone: borrower.phone });
       if (phoneExists) {
         return res.status(400).json({ message: "Phone number already registered" });
       }
 
-      // Create a new borrower record
+      // Create borrower
       const newBorrowerRecord = await Borrower.create({
         name: borrower.name,
-        phone: borrower.phone
+        phone: borrower.phone,
       });
 
       borrowerId = newBorrowerRecord._id;
-
-    } else {
+    } 
+    else {
       // ----------------------------------------------------------
-      // 2️⃣ If newBorrower = false → borrower should be an ObjectId
+      // 2️⃣ Using existing borrower
       // ----------------------------------------------------------
       const borrowerExists = await Borrower.findById(borrower);
       if (!borrowerExists) {
@@ -69,45 +67,62 @@ const createLoan = async (req, res) => {
     }
 
     // ----------------------------------------------------------
-    // 3️⃣ Loan Calculations
+    // 3️⃣ New Calculation (no interestRate)
     // ----------------------------------------------------------
+    if (!amountPaidToBorrower) {
+      return res.status(400).json({
+        message: "amountPaidToBorrower is required",
+      });
+    }
 
-    const initialInterestDeduction = (principalAmount * interestRate) / 100;
-    const amountPaidToBorrower = principalAmount - initialInterestDeduction;
+    const initialInterestDeduction =
+      Number(principalAmount) - Number(amountPaidToBorrower);
 
+    if (initialInterestDeduction < 0) {
+      return res.status(400).json({
+        message: "Amount paid cannot exceed principal amount",
+      });
+    }
+
+    // Default installment count if none provided
     const finalInstallmentCount = installmentCount || 100;
-    const installmentAmount = principalAmount / finalInstallmentCount;
 
-    const remainingAmount = principalAmount;
+    // Optional: keep installmentAmount (let me know if you want to remove it)
+    const installmentAmount = Number(principalAmount) / finalInstallmentCount;
+
+    const remainingAmount = Number(principalAmount);
 
     // ----------------------------------------------------------
-    // 4️⃣ Create Loan
+    // 4️⃣ Create Loan Record
     // ----------------------------------------------------------
     const loan = await Loan.create({
       borrower: borrowerId,
       assignedAgent,
       principalAmount,
-      interestRate,
-      initialInterestDeduction,
       amountPaidToBorrower,
+      initialInterestDeduction,
       installmentCount: finalInstallmentCount,
-      installmentAmount,
-      amountPaidByBorrower: 0,
+      installmentAmount,          // OPTIONAL — tell me if you want to remove it completely
       remainingAmount,
-      startDate
+      amountPaidByBorrower: 0,
+      startDate,
     });
 
     res.status(201).json({
       message: newBorrower
         ? "New borrower created and loan created successfully"
         : "Loan created successfully",
-      loan
+      loan,
     });
 
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
   }
 };
+
 
 
 /**
@@ -126,6 +141,107 @@ const getAllLoans = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+const createLoanInProgress = async (req, res) => {
+  try {
+    const {
+      newBorrower,       // true or false
+      borrower,          // if newBorrower = true → borrower = { name, phone }
+                         // if newBorrower = false → borrower = borrowerId
+      assignedAgent,
+      principalAmount,
+      installmentCount,
+      amountPaidToBorrower,
+      amountPaidByBorrower,
+      startDate
+    } = req.body;
+
+    let borrowerId;
+    
+    // -----------------------------
+    // 1️⃣ Handle New Borrower
+    // -----------------------------
+    if (newBorrower) {
+      // Validate new borrower data
+      if (!borrower?.name || !borrower?.phone) {
+        return res.status(400).json({
+          message: "Borrower name and phone are required for new borrower",
+        });
+      }
+
+      // Check for duplicate phone
+      const phoneExists = await Borrower.findOne({ phone: borrower.phone });
+      if (phoneExists) {
+        return res.status(400).json({ message: "Phone number already registered" });
+      }
+
+      // Create new borrower
+      const newBorrowerRecord = await Borrower.create({
+        name: borrower.name,
+        phone: borrower.phone,
+      });
+
+      borrowerId = newBorrowerRecord._id;
+    } else {
+      // Existing borrower
+      const borrowerExists = await Borrower.findById(borrower);
+      if (!borrowerExists) {
+        return res.status(400).json({ message: "Borrower not found" });
+      }
+      borrowerId = borrower;
+    }
+
+    // -----------------------------
+    // 2️⃣ Validate required fields
+    // -----------------------------
+    if (
+      !principalAmount ||
+      !amountPaidToBorrower ||
+      !installmentCount ||
+      amountPaidByBorrower === undefined ||
+      !startDate
+    ) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // -----------------------------
+    // 3️⃣ Loan Calculations
+    // -----------------------------
+    const initialInterestDeduction = principalAmount - amountPaidToBorrower;
+    const installmentAmount = principalAmount / installmentCount;
+    const remainingAmount = principalAmount - amountPaidByBorrower;
+
+    // -----------------------------
+    // 4️⃣ Create Loan
+    // -----------------------------
+    const loan = await Loan.create({
+      borrower: borrowerId,
+      assignedAgent: assignedAgent || null,
+      principalAmount,
+      initialInterestDeduction,
+      amountPaidToBorrower,
+      installmentCount,
+      installmentAmount,
+      amountPaidByBorrower,
+      remainingAmount,
+      startDate,
+      status: remainingAmount <= 0 ? "completed" : "active",
+    });
+
+    res.status(201).json({
+      message: newBorrower
+        ? "New borrower created and loan created successfully"
+        : "Loan created successfully",
+      loan,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+
 
 /**
  * @desc Get a single loan
@@ -236,5 +352,6 @@ export {
   getLoansByAgent,
   addPayment,
   updateLoanStatusManually,
+  createLoanInProgress,
   deleteLoan,
 };

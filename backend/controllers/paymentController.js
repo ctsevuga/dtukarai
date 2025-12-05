@@ -2,6 +2,7 @@ import Payment from "../models/paymentModel.js";
 import Loan from "../models/loanModel.js";
 import User from "../models/userModel.js";
 import Borrower from "../models/borrowerModel.js";
+import moment from "moment-timezone";
 import mongoose from "mongoose";
 
 /**
@@ -79,6 +80,47 @@ const getAllPayments = async (req, res) => {
  * @route GET /api/payments/loan/:loanId
  * @access Admin / Agent
  */
+const getTodaysPayments = async (req, res) => {
+  try {
+    // Get today's date in IST timezone
+    const raw = await Payment.find().lean();
+console.log(JSON.stringify(raw[0], null, 2));
+    const todayStart = moment().tz('Asia/Kolkata').startOf('day').toDate();
+    const todayEnd = moment().tz('Asia/Kolkata').endOf('day').toDate();
+
+    // Fetch payments made today
+    const payments = await Payment.find({
+      paymentDate: { $gte: todayStart, $lte: todayEnd },
+    })
+      .populate("loanId", "principalAmount remainingAmount status")
+      .populate("borrower", "name phone") 
+      .populate("agent", "name email");
+
+    res.status(200).json(payments);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+const getYesterdaysPayments = async (req, res) => {
+  try {
+    // Get the start and end of yesterday in IST timezone
+    const yesterdayStart = moment().tz('Asia/Kolkata').subtract(1, 'days').startOf('day').toDate();
+    const yesterdayEnd = moment().tz('Asia/Kolkata').subtract(1, 'days').endOf('day').toDate();
+
+    // Fetch payments made yesterday
+    const payments = await Payment.find({
+      paymentDate: { $gte: yesterdayStart, $lte: yesterdayEnd },
+    })
+      .populate("loanId", "principalAmount remainingAmount status")
+      .populate("borrower", "name phone") 
+      .populate("agent", "name email");
+
+    res.status(200).json(payments);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 const getPaymentsByLoan = async (req, res) => {
   try {
@@ -239,4 +281,6 @@ export {
   getPaymentsByBorrower,
   deletePayment,
   getPaymentReport,
+  getTodaysPayments,
+  getYesterdaysPayments,
 };

@@ -54,6 +54,20 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 });
 
+const getCollectingAgents = async (req, res) => {
+  try {
+    const agents = await User.find({ role: "Collecting Agent" })
+      .select("-password")  // remove password from response
+      .sort({ createdAt: -1 }); // newest first
+
+    res.status(200).json(agents);
+  } catch (error) {
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
 
 // LOGIN USER  --------------------------------------------------
 const authUser = asyncHandler(async (req, res) => {
@@ -201,4 +215,5 @@ export {
   deleteUser,
   getUserById,
   updateUser,
+  getCollectingAgents,
 };

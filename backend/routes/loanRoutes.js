@@ -6,6 +6,7 @@ import {
   getLoansByAgent,
   addPayment,
   updateLoanStatusManually,
+  createLoanInProgress,
   deleteLoan,
 } from "../controllers/loanController.js";
 
@@ -25,6 +26,13 @@ router
   router
   .route("/")
   .get(protect,  getAllLoans);
+  
+  router.post(
+  "/in-progress",
+  protect,
+  authorizeRoles("admin"),
+  createLoanInProgress
+);
 
 /**
  * @route GET /api/loans/:id

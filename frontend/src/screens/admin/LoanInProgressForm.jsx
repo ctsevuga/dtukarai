@@ -15,9 +15,9 @@ import {
   FormControlLabel
 } from "@mui/material";
 
-import { useCreateLoanMutation } from "../../slices/loansApiSlice";
+import { useCreateLoanInProgressMutation } from "../../slices/loansApiSlice";
 import { useGetAllBorrowersQuery } from "../../slices/borrowersApiSlice";
-import { useGetCollectingAgentsQuery } from "../../slices/usersApiSlice";
+import { useGetCollectingAgentsQuery } from "../../slices/usersApiSlice";   // ✅ Added
 
 import { Formik } from "formik";
 import * as Yup from "yup";
@@ -30,10 +30,12 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 
-const LoanCreateForm = () => {
-  const [createLoan, { isLoading }] = useCreateLoanMutation();
+const LoanInProgressForm = () => {
+  const [createLoanInProgress, { isLoading }] = useCreateLoanInProgressMutation();
   const { data: borrowers, isLoading: borrowerLoading } = useGetAllBorrowersQuery();
-  const { data: agents, isLoading: agentLoading } = useGetCollectingAgentsQuery();
+
+  // ✅ Fetch agents for dropdown
+  const { data: agents, isLoading: agentsLoading } = useGetCollectingAgentsQuery();
 
   const [newBorrower, setNewBorrower] = useState(false);
   const [selectedBorrower, setSelectedBorrower] = useState("");
@@ -48,26 +50,26 @@ const LoanCreateForm = () => {
     borrowerPhone: "",
     assignedAgent: "",
     principalAmount: "",
-    amountPaidToBorrower: "",
     installmentCount: "",
+    amountPaidToBorrower: "",
+    amountPaidByBorrower: "",
     startDate: "",
   };
 
   const validationSchema = Yup.object({
     assignedAgent: Yup.string().required("Agent required"),
     principalAmount: Yup.number().required().positive(),
-    amountPaidToBorrower: Yup.number()
-      .required("Required")
-      .positive()
-      .max(Yup.ref("principalAmount"), "Cannot exceed Principal Amount"),
     installmentCount: Yup.number().required().positive(),
+    amountPaidToBorrower: Yup.number()
+      .required()
+      .min(0, "Cannot be negative"),
+    amountPaidByBorrower: Yup.number().required().min(0),
     startDate: Yup.date().required("Start date required"),
 
     borrower: Yup.string().when("newBorrower", {
       is: false,
       then: Yup.string().required("Borrower required"),
     }),
-
     borrowerName: Yup.string().when("newBorrower", {
       is: true,
       then: Yup.string().required("Borrower name required"),
@@ -83,30 +85,34 @@ const LoanCreateForm = () => {
       const payload = {
         newBorrower,
         borrower: newBorrower
-          ? {
-              name: values.borrowerName,
-              phone: values.borrowerPhone,
-            }
+          ? { name: values.borrowerName, phone: values.borrowerPhone }
           : values.borrower,
+
+        // ✅ Sends ObjectId of selected agent
         assignedAgent: values.assignedAgent,
-        principalAmount: values.principalAmount,
-        amountPaidToBorrower: values.amountPaidToBorrower,
-        installmentCount: values.installmentCount,
+
+        principalAmount: Number(values.principalAmount),
+        amountPaidToBorrower: Number(values.amountPaidToBorrower),
+        installmentCount: Number(values.installmentCount),
+        amountPaidByBorrower: Number(values.amountPaidByBorrower),
         startDate: values.startDate,
       };
 
-      await createLoan(payload).unwrap();
+      await createLoanInProgress(payload).unwrap();
+
       toast.success("Loan created successfully!");
       resetForm();
+      setNewBorrower(false);
+      setSelectedBorrower("");
     } catch (err) {
       toast.error(err?.data?.message || "Error creating loan");
     }
   };
 
-  if (borrowerLoading || agentLoading) {
+  if (borrowerLoading || agentsLoading) {
     return (
       <Typography align="center" mt={5} variant="h6">
-        Loading...
+        Loading data...
       </Typography>
     );
   }
@@ -123,15 +129,18 @@ const LoanCreateForm = () => {
         }}
       >
         <Typography variant="h5" align="center" fontWeight="bold" gutterBottom>
-          📄 Create New Loan
+          📄 Create Loan In Progress
         </Typography>
 
-        <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={handleSubmit}>
-          {({ values, errors, touched, handleChange, handleSubmit, handleBlur }) => (
+        <Formik
+          initialValues={initialValues}
+          validationSchema={validationSchema}
+          onSubmit={handleSubmit}
+        >
+          {({ values, errors, touched, handleChange, handleBlur, handleSubmit }) => (
             <form onSubmit={handleSubmit}>
               <Grid container spacing={2}>
-
-                {/* New Borrower Toggle */}
+                {/* New Borrower Checkbox */}
                 <Grid item xs={12}>
                   <FormControlLabel
                     control={
@@ -148,7 +157,7 @@ const LoanCreateForm = () => {
                   />
                 </Grid>
 
-                {/* Borrower Select */}
+                {/* Borrower Selection */}
                 {!newBorrower ? (
                   <>
                     <Grid item xs={12}>
@@ -178,15 +187,12 @@ const LoanCreateForm = () => {
 
                     {selectedBorrowerDetails && (
                       <Grid item xs={12}>
-                        <Typography fontWeight="bold">
-                          📞 Phone: {selectedBorrowerDetails.phone}
-                        </Typography>
+                        <Typography fontWeight="bold">📞 Phone: {selectedBorrowerDetails.phone}</Typography>
                       </Grid>
                     )}
                   </>
                 ) : (
                   <>
-                    {/* Borrower Name */}
                     <Grid item xs={12}>
                       <TextField
                         label="Borrower Name"
@@ -205,7 +211,6 @@ const LoanCreateForm = () => {
                       />
                     </Grid>
 
-                    {/* Borrower Phone */}
                     <Grid item xs={12}>
                       <TextField
                         label="Borrower Phone"
@@ -226,7 +231,7 @@ const LoanCreateForm = () => {
                   </>
                 )}
 
-                {/* Agent Dropdown */}
+                {/* AGENT DROPDOWN */}
                 <Grid item xs={12}>
                   <FormControl fullWidth>
                     <InputLabel sx={{ color: "white" }}>Select Agent</InputLabel>
@@ -249,13 +254,14 @@ const LoanCreateForm = () => {
                       ))}
                     </Select>
                   </FormControl>
+
                   {touched.assignedAgent && errors.assignedAgent && (
                     <Typography color="error">{errors.assignedAgent}</Typography>
                   )}
                 </Grid>
 
                 {/* Principal Amount */}
-                <Grid item xs={12}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Principal Amount"
@@ -282,10 +288,10 @@ const LoanCreateForm = () => {
                 </Grid>
 
                 {/* Amount Paid To Borrower */}
-                <Grid item xs={12}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label="Amount Paid to Borrower"
+                    label="Amount Paid To Borrower"
                     name="amountPaidToBorrower"
                     type="number"
                     value={values.amountPaidToBorrower}
@@ -308,8 +314,35 @@ const LoanCreateForm = () => {
                   />
                 </Grid>
 
-                {/* Installments */}
-                <Grid item xs={12}>
+                {/* Amount Paid By Borrower */}
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Amount Paid By Borrower"
+                    name="amountPaidByBorrower"
+                    type="number"
+                    value={values.amountPaidByBorrower}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={touched.amountPaidByBorrower && Boolean(errors.amountPaidByBorrower)}
+                    helperText={touched.amountPaidByBorrower && errors.amountPaidByBorrower}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <AttachMoneyIcon sx={{ color: "white" }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      backgroundColor: "rgba(255,255,255,0.15)",
+                      input: { color: "white" },
+                      label: { color: "white" },
+                    }}
+                  />
+                </Grid>
+
+                {/* Installment Count */}
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Installment Count"
@@ -381,7 +414,6 @@ const LoanCreateForm = () => {
                     {isLoading ? "Submitting..." : "Create Loan"}
                   </Button>
                 </Grid>
-
               </Grid>
             </form>
           )}
@@ -391,4 +423,4 @@ const LoanCreateForm = () => {
   );
 };
 
-export default LoanCreateForm;
+export default LoanInProgressForm;

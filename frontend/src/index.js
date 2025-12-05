@@ -30,6 +30,9 @@ import UserListScreen from "./screens/admin/UserListScreen";
 import UserEditScreen from "./screens/admin/UserEditScreen";
 import LoanCreateForm from "./screens/admin/LoanCreateForm";
 import PaymentReport from "./screens/admin/PaymentReport";
+import TodaysPayments from "./screens/admin/TodaysPayments";
+import YesterdaysPayments from "./screens/admin/YesterdaysPayments";
+import LoanInProgressForm from "./screens/admin/LoanInProgressForm";
 
 import LoanList from "./screens/LoanList";
 import LoanDetail from "./screens/LoanDetail";
@@ -154,8 +157,30 @@ const RouterWrapper = () => {
             </AdminRoute>
           }
         />
-        
-        
+        <Route
+          path="/admin/todaysPayment"
+          element={
+            <AdminRoute user={userInfo}>
+              <TodaysPayments />
+            </AdminRoute>
+          }
+        />
+         <Route
+          path="/admin/yesterdaysPayments"
+          element={
+            <AdminRoute user={userInfo}>
+              <YesterdaysPayments />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/loanProgress"
+          element={
+            <AdminRoute user={userInfo}>
+              <LoanInProgressForm/>
+            </AdminRoute>
+          }
+        />
        
         {/* Profile (optional - accessible by all roles) */}
         {/* <Route path="/profile" element={<ProfileScreen />} /> */}

@@ -64,6 +64,14 @@ export const userApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["User"],
     }),
+    getCollectingAgents: builder.query({
+  query: () => ({
+    url: `${USERS_URL}/agents`,
+    method: "GET",
+  }),
+  providesTags: ["Users"],
+  keepUnusedDataFor: 5,
+}),
 
     // DELETE USER (Admin)
     deleteUser: builder.mutation({
@@ -85,5 +93,6 @@ export const {
   useGetUsersQuery,
   useGetUserDetailsQuery,
   useUpdateUserMutation,
+  useGetCollectingAgentsQuery,
   useDeleteUserMutation,
 } = userApiSlice;

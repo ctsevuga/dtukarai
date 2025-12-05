@@ -22,6 +22,15 @@ export const loansApiSlice = apiSlice.injectEndpoints({
       keepUnusedDataFor: 5,
     }),
 
+    createLoanInProgress: builder.mutation({
+      query: (loanData) => ({
+        url: `${LOANS_URL}/in-progress`,
+        method: "POST",
+        body: loanData,
+      }),
+      invalidatesTags: ["Loans"],
+    }),
+
     // Get loan by ID (Admin + Agent)
     getLoanById: builder.query({
       query: (loanId) => ({
@@ -74,5 +83,6 @@ export const {
   useGetLoansByAgentQuery,
   useAddPaymentToLoanMutation,
   useUpdateLoanStatusMutation,
+  useCreateLoanInProgressMutation,
   useDeleteLoanMutation,
 } = loansApiSlice;

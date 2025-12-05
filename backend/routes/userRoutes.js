@@ -8,6 +8,7 @@ import {
   getUserById,
   deleteUser,
   updateUser,
+  getCollectingAgents,
 } from "../controllers/userController.js";
 
 import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
@@ -38,6 +39,11 @@ router.post("/auth", authUser);
  * @desc Get or update logged-in user profile
  * @access Logged-in users (Admin + Agent)
  */
+router.get(
+  "/agents",
+  protect,
+ getCollectingAgents
+);
 router
   .route("/profile")
   .get(protect, getUserProfile)

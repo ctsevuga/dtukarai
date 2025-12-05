@@ -43,6 +43,9 @@ const HomeScreen = () => {
   const roleNavigation = {
     admin: [
       { title: "Loan Creation", path: "/admin/loan", icon: <FaBox /> },
+      { title: "Loan Creation Already Started", path: "/admin/loanProgress", icon: <FaBox /> },
+      { title: "Todays Payment", path: "/admin/todaysPayment", icon: <FaTags /> },
+      { title: "Yesterdays Payment", path: "/admin/yesterdaysPayments", icon: <FaTags /> },
       { title: "Payment Report", path: "/admin/paymentreport", icon: <FaTags /> },
       { title: "Loan List", path: "/loanList", icon: <FaTags /> },
       { title: "Payment List", path: "/paymentlist", icon: <FaList /> },
